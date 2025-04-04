@@ -122,8 +122,6 @@ class GitlabUtil:
         else:
             logging.info(f"Project '{self.name}' Does Not Exist!")
 
-    # This is Commit Taron Ghazaryan
-
     # def delete(self):
     #     if self.name is not None:
     #         project_id = self.gl.projects.list(search=self.name, owned=True)[0].id
