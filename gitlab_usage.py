@@ -57,20 +57,20 @@ class GitlabUtil:
             logging.error("Превышено максимальное количество попыток ввода токена.")
             exit(1)
 
+
     def create(self):
         try:
             projects = self.gl.projects.list(search=self.name, owned=True)
             if not projects:
-                self.gl.projects.create({'name': self.name})
+                project = self.gl.projects.create({'name': self.name})
+                self.project_id = project.get_id()
                 logging.info(f'User: {self.user.username} create Project "{self.name}"')
                 return
             else:
-                # self.project_id = projects[0].id
                 logging.info(f'Project "{self.name}" has already been created.')
                 exit(1)
         except Exception as e:
             logging.error(f'[ERROR]: {e}')
-            exit(1)
 
     def add_base_files_for_project(self):
         # projects = self.gl.projects.list(search=self.name, owned=True)
@@ -94,7 +94,8 @@ class GitlabUtil:
         #     logging.info(f'Файл {file_path} успешно создан в проекте.')
         # except Exception as e:
         #     logging.error(f'{e}')
-        project = self.gl.projects.get(self.project_id, lazy=False)
+
+        project = self.gl.projects.get(self.project_id, lazy=True)
         project.files.create({
             'file_path': '.gitlab-ci.yml',
             'branch': 'main',
@@ -103,7 +104,7 @@ class GitlabUtil:
             'author_name': 'MetsMher',
             'commit_message': 'Create testfile'
         })
-        logging.info(f'file created.')
+        logging.info(f'file  has already been created.')
 
     def add_branches(self):
         project = self.gl.projects.get(self.project_id, lazy=False)
@@ -121,7 +122,6 @@ class GitlabUtil:
         else:
             logging.info(f"Project '{self.name}' Does Not Exist!")
 
-    # This is Commit Taron Ghazaryan
     # def delete(self):
     #     if self.name is not None:
     #         project_id = self.gl.projects.list(search=self.name, owned=True)[0].id
@@ -132,10 +132,10 @@ class GitlabUtil:
 
 
 if __name__ == "__main__":
-    inst = GitlabUtil("Test1")
+    inst = GitlabUtil("Test")
     time.sleep(0.5)
     inst.create()
     inst.add_base_files_for_project()
-    # inst.add_branches()
-    time.sleep(1)
-    inst.delete()
+    inst.add_branches()
+    # time.sleep(1)
+    # inst.delete()
