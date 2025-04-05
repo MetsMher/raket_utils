@@ -164,6 +164,8 @@ import logging
 import sys
 import os
 import gitlab.exceptions
+from pathlib import Path
+
 
 content = """
 stages:
@@ -177,6 +179,11 @@ test-utils:
       echo "This is good utils!:) "
 """
 
+
+
+gitignore_path = Path("./ignors/python.gitignore").read_text(encoding="utf-8")
+
+
 logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",
                     datefmt="%Y-%m-%d %H:%M:%S",
                     # filename="gitlab_log.log",
@@ -186,12 +193,19 @@ logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",
                     )
 
 
+gitignore_files = {
+
+}
+
+
+
 class GitlabUtil:
     def __init__(self, name):
         self.token = os.getenv("GITLAB_TOKEN") or getpass.getpass("🔑 Введите GitLab токен: ")
         self.name = name
         self.user = None
         self.project_id = None
+        # self.language = language # example java/python
         self.gitlab_url = os.getenv('GITLAB_URL', 'https://gitlab.com')
         for i in range(2):
             try:
@@ -258,6 +272,16 @@ class GitlabUtil:
             'file_path': '.gitlab-ci.yml',
             'branch': 'main',
             'content': content,
+            'author_email': 'mher07@icloud.com',
+            'author_name': 'MetsMher',
+            'commit_message': 'Create testfile'
+        })
+        logging.info(f'file  has already been created.')
+
+        project.files.create({
+            'file_path': '.gitignoe',
+            'branch': 'main',
+            'content': gitignore_path,
             'author_email': 'mher07@icloud.com',
             'author_name': 'MetsMher',
             'commit_message': 'Create testfile'
