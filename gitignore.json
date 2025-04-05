@@ -1,0 +1,7 @@
+{
+  "python": "./ignors/python.giitignore",
+  "c++": "./ignors/ccc.gitignore",
+  "golang": "./ignors/golang.gitignore",
+  "java": "./ignors/java.gitignore",
+  "vue": "./ignors/vue.gitignore"
+}

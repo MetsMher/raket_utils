@@ -163,9 +163,12 @@ import getpass
 import logging
 import sys
 import os
+import json
 import gitlab.exceptions
 from pathlib import Path
 
+
+from pathlib import Path
 
 content = """
 stages:
@@ -180,8 +183,12 @@ test-utils:
 """
 
 
+def choice_gi(language: str):
+    with open('./gitignore.json', 'r') as f:
+        git_dict = json.load(f)
+    gitignore_file = Path(f"{git_dict[language]}").read_text(encoding="utf-8")
+    return gitignore_file
 
-gitignore_path = Path("./ignors/python.gitignore").read_text(encoding="utf-8")
 
 
 logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",
@@ -193,19 +200,13 @@ logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",
                     )
 
 
-gitignore_files = {
-
-}
-
-
-
 class GitlabUtil:
-    def __init__(self, name):
+    def __init__(self, name, language):
         self.token = os.getenv("GITLAB_TOKEN") or getpass.getpass("🔑 Введите GitLab токен: ")
         self.name = name
         self.user = None
         self.project_id = None
-        # self.language = language # example java/python
+        self.language = language
         self.gitlab_url = os.getenv('GITLAB_URL', 'https://gitlab.com')
         for i in range(2):
             try:
@@ -236,6 +237,15 @@ class GitlabUtil:
             if not projects:
                 project = self.gl.projects.create({'name': self.name})
                 self.project_id = project.get_id()
+                project.files.create({
+                    'file_path': '.gitignoe',
+                    'branch': 'main',
+                    'content': choice_gi(self.language),
+                    'author_email': 'mher07@icloud.com',
+                    'author_name': 'MetsMher',
+                    'commit_message': 'Create testfile'
+                })
+                logging.info(f'file  has already been created.')
                 logging.info(f'User: {self.user.username} create Project "{self.name}"')
                 return
             else:
@@ -278,15 +288,7 @@ class GitlabUtil:
         })
         logging.info(f'file  has already been created.')
 
-        project.files.create({
-            'file_path': '.gitignoe',
-            'branch': 'main',
-            'content': gitignore_path,
-            'author_email': 'mher07@icloud.com',
-            'author_name': 'MetsMher',
-            'commit_message': 'Create testfile'
-        })
-        logging.info(f'file  has already been created.')
+
 
     def add_branches(self):
         project = self.gl.projects.get(self.project_id, lazy=False)
@@ -326,7 +328,7 @@ class GitlabUtil:
 
 
 if __name__ == "__main__":
-    inst = GitlabUtil("Test")
+    inst = GitlabUtil("Test1", 'c++')
     time.sleep(0.5)
     inst.create()
     inst.add_base_files_for_project()
