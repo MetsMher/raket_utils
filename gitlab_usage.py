@@ -9,21 +9,6 @@ import os
 import gitlab.exceptions
 from pathlib import Path
 
-def file_generate(
-        file_path: str,
-        content,
-        author_email,
-        author_name
-):
-    data = {
-        'file_path': file_path,
-        'branch': 'main',
-        'content': content,
-        'author_email': author_email,
-        'author_name': author_name,
-        'commit_message': f'{file_path} created file'}
-    return data
-
 
 logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",
                     datefmt="%Y-%m-%d %H:%M:%S",
@@ -42,7 +27,7 @@ class GitlabUtil:
         self.project_id = None
         self.language = language
         self.gitlab_url = os.getenv('GITLAB_URL', 'https://gitlab.com')
-        for i in range(2):
+        for i in range(3):
             try:
                 self.gl = gitlab.Gitlab(private_token=self.token)
                 self.gl.auth()
@@ -50,10 +35,10 @@ class GitlabUtil:
                 logging.info(f"Пользователь: {self.user.username:}[{self.user.id}] успешно авторизовался!")
                 break
             except gitlab.exceptions.GitlabAuthenticationError as e:
-                logging.error(f'Ошибка аутентификации {e}')
-                if i < 3 - 1:
-                    logging.warning(f"У вас осталось {3 - i - 1} попытка(ок)")
-                    token = getpass.getpass("🔑 Введите GitLab токен: ")
+                logging.warning(f'Не найдена переменная GITLAB_TOKEN для авторизации')
+                if i < 3:
+                    logging.warning(f"У вас {3 - i} попытки")
+                    self.token = getpass.getpass("🔑 Введите GitLab токен: ")
             except gitlab.exceptions.GitlabHttpError as e:
                 logging.error(f"HTTP статус: {e}")
                 exit(1)
@@ -68,7 +53,10 @@ class GitlabUtil:
         try:
             projects = self.gl.projects.list(search=self.name, owned=True)
             if not projects:
-                project = self.gl.projects.create({'name': self.name})
+                project = self.gl.projects.create({
+                    'name': self.name,
+                    'visibility': 'private'
+                })
                 self.project_id = project.get_id()  # Stanum enq project ID u pahum enq self project_id- um
                 logging.info(f'User: {self.user.username} create Project "{self.name}"')
                 return
@@ -79,54 +67,35 @@ class GitlabUtil:
             logging.error(f'[ERROR]: {e}')
 
     def add_base_files_for_project(self):
-        # projects = self.gl.projects.list(search=self.name, owned=True)
-        # if not projects:
-        #     logging.error(f'Проект с именем {self.name} не найден!')
-        #     return
-        # project = projects[0]
-        # self.project_id = project.id
-        # # Определяем путь к файлу и его содержимое
-        # file_path = '.gitlab-ci.yml'
-        #
-        # try:
-        #     project.files.create({
+
+        # def file_generate(
+        #         file_path: str,
+        #         content,
+        #         author_email,
+        #         author_name
+        # ):
+        #     data = {
         #         'file_path': file_path,
         #         'branch': 'main',
         #         'content': content,
-        #         'commit_message': f'Создан файл {file_path}',
-        #         'author_name': self.user.username,
-        #         'author_email': self.user.email
-        #     })
-        #     logging.info(f'Файл {file_path} успешно создан в проекте.')
-        # except Exception as e:
-        #     logging.error(f'{e}')
+        #         'author_email': author_email,
+        #         'author_name': author_name
+        #     }
+        #     return data
+        # # Добавляет файлы по отдельно по одному commit
+        # files = ("README.md", ".dockerignore", ".gitignore", ".gitlab-ci.yml", "Dockerfile", "docker-compose.yml")
+        # project = self.gl.projects.get(self.project_id, lazy=True)
+        # for file in files:
+        #     file_path = Path(f'./temps_files/{self.language}/{file}').read_text()
+        #     project.files.create(
+        #         file_generate(file_path=file,
+        #                       content=file_path,
+        #                       author_name=self.user.username,
+        #                       author_email=self.user.email)
+        #     )
+        #     logging.info(f'file {file} has already been created.')
 
-        files = ("README.md", ".dockerignore", ".gitignore", ".gitlab-ci.yml", "Dockerfile", "docker-compose.yml")
-        project = self.gl.projects.get(self.project_id, lazy=True)
-        for file in files:
-            file_path = Path(f'./temps_files/{self.language}/{file}').read_text()
-            project.files.create(
-                file_generate(file_path=file,
-                              content=file_path,
-                              author_name=self.user.username,
-                              author_email=self.user.email)
-            )
-            logging.info(f'file {file} has already been created.')
-
-        def file_generate(
-                file_path: str,
-                content,
-                author_email,
-                author_name
-        ):
-            return {
-                'file_path': file_path,
-                'content': content,
-                'author_email': author_email,
-                'author_name': author_name
-            }
-
-        files = ("README.md", ".dockerignore", ".gitignore", ".gitlab-ci.yml", "Dockerfile", "docker-compose.yml")
+        files = ( ".dockerignore", ".gitignore", ".gitlab-ci.yml", "Dockerfile", "docker-compose.yml")
         project = self.gl.projects.get(self.project_id, lazy=True)
 
         # Собираем все файлы для одного коммита
@@ -135,42 +104,21 @@ class GitlabUtil:
             'commit_message': 'Initial project setup with all configuration files',
             'actions': []
         }
-        #
-        # for file in files:
-        #     file_path = Path(f'./temps_files/{self.language}/{file}').read_text()
-        #     commit_data['actions'].append({
-        #         'action': 'create',
-        #         'file_path': file,
-        #         'content': file_path,
-        #         'author_email': self.user.email,
-        #         'author_name': self.user.username
-        #     })
-        #     logging.info(f'Prepared {file} for commit')
-        #
-        # # Создаем один коммит со всеми файлами
-        # project.commits.create(commit_data)
-        # logging.info('All files committed in a single commit')
 
-        # files = [('.gitignore'), ('.gitlab-ci.yml'), ('README.md')]
-        # for file in files:
-        #     project = self.gl.projects.get(self.project_id, lazy=True)
-        #     project.files.create(
-        #         file_generate(file_path="./.gitlab-ci.yml",
-        #                       content=content,
-        #                       author_name=self.user.username,
-        #                       author_email=self.user.email)
-        #     )
-        #     logging.info(f'file {file} has already been created.')
+        for file in files:
+            file_path = Path(f'./temps_files/{self.language}/{file}').read_text()
+            commit_data['actions'].append({
+                'action': 'create',
+                'file_path': file,
+                'content': file_path,
+                'author_email': self.user.email,
+                'author_name': self.user.username
+            })
+            logging.info(f'Added {file} for commit')
 
-        # project.files.create({
-        #     'file_path': '.gitignoe',
-        #     'branch': 'main',
-        #     'content': choice_gi(self.language),
-        #     'author_email': 'mher07@icloud.com',
-        #     'author_name': 'MetsMher',
-        #     'commit_message': 'Create testfile'
-        # })
-        # logging.info(f'file  has already been created.')
+        # Создаем один коммит со всеми файлами
+        project.commits.create(commit_data)
+        logging.info('All files committed in a single commit')
 
     def add_branches(self):
         project = self.gl.projects.get(self.project_id, lazy=False)
@@ -182,14 +130,32 @@ class GitlabUtil:
 
     def protected_branches(self):
         project = self.gl.projects.get(self.project_id, lazy=False)
+        branch_name = 'main'
+        protect_branch = project.protectedbranches.get(branch_name)
+        protect_branch.delete()
+
         try:
             project.protectedbranches.create({
-                'name': 'main',
-                'merge_access_level': gitlab.const.AccessLevel.DEVELOPER,  # Мёрж через MR (но не напрямую!)
-                'push_access_level': gitlab.const.AccessLevel.NO_ACCESS,  # Прямой пуш запрещён
-            })
+                    'name': branch_name,
+                    'push_access_level': gitlab.const.AccessLevel.NO_ACCESS,
+                    'merge_access_level': gitlab.const.AccessLevel.DEVELOPER,
+                })
+            logging.info(f'Protected branch "{branch_name}" created.')
         except gitlab.exceptions.GitlabCreateError as e:
-            logging.warning(f'{e}')
+            logging.warning(f'Failed to create protected branch: {e}')
+
+        project.protectedbranches.create(
+            {
+                'name': 'develop',
+                'push_access_level': gitlab.const.AccessLevel.DEVELOPER,  # Push разрешён для разработчиков
+                'merge_access_level': gitlab.const.AccessLevel.DEVELOPER,  # Merge разрешён для разработчиков
+                'unprotect_access_level': gitlab.const.AccessLevel.MAINTAINER,  # Снять защиту могут только мейнтейнеры
+                'code_owner_approval_required': False,  # Требовать approval от CODEOWNERS (опционально)
+                'allowed_to_push': [{'access_level': gitlab.const.AccessLevel.DEVELOPER}],
+                'allowed_to_merge': [{'access_level': gitlab.const.AccessLevel.DEVELOPER}],
+        })
+        logging.info(f'Protected branch "develop" created:')
+
 
     def delete(self):
         projects_name = self.gl.projects.list(search=self.name, owned=True)
@@ -199,22 +165,14 @@ class GitlabUtil:
         else:
             logging.info(f"Project '{self.name}' Does Not Exist!")
 
-    # def delete(self):
-    #     if self.name is not None:
-    #         project_id = self.gl.projects.list(search=self.name, owned=True)[0].id
-    #         self.gl.projects.delete(project_id)
-    #         logging.info(f'User: {self.user.username} Deleted "{self.name}" Project')
-    #     else:
-    #         logging.info(f"Project '{self.name}' Does Not Exist!")
-
 
 if __name__ == "__main__":
-    inst = GitlabUtil("Test11", 'python')
+    inst = GitlabUtil("Test", 'python')
     time.sleep(0.5)
     inst.create()
     inst.add_base_files_for_project()
     inst.add_branches()
     inst.protected_branches()
-    # time.sleep(1)
+    time.sleep(1)
     # inst.delete()
     logging.info("Процесс завершен успешно")
