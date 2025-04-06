@@ -1,5 +1,5 @@
 {
-  "python": "./ignors/python.giitignore",
+  "python": "./ignors/{language}.giitignore",
   "c++": "./ignors/ccc.gitignore",
   "golang": "./ignors/golang.gitignore",
   "java": "./ignors/java.gitignore",
