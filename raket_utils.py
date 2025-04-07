@@ -2,12 +2,20 @@ import gitlab
 import time
 import getpass
 import logging
-import sys
-import os
 import gitlab.exceptions
 from pathlib import Path
 from typing import Optional
 import typer
+import os
+import sys
+
+def get_path(relative_path):
+    """Получает абсолютный путь к файлу, учитывая временную папку PyInstaller."""
+    if hasattr(sys, '_MEIPASS'):  # Если запущено из собранного бинарника
+        base_path = sys._MEIPASS
+    else:  # Если запущено из исходного кода
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 
 logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",
@@ -69,12 +77,38 @@ class GitlabUtil:
                 return
             else:
                 logging.info(f'Project "{self.name}" has already been created.')
-                exit(1)
+                sys.exit()
         except Exception as e:
             logging.error(f'[ERROR]: {e}')
 
 
     def add_base_files_for_project(self):
+        # Получаем путь через модуль pathlib который не подходит для использования через build проекта
+
+        # files = ("README.md", ".dockerignore", ".gitignore", ".gitlab-ci.yml", "Dockerfile", "docker-compose.yml")
+        # project = self.gl.projects.get(self.project_id, lazy=True)
+        #
+        # # Собираем все файлы для одного коммита
+        # commit_data = {
+        #     'branch': 'main',
+        #     'commit_message': 'Initial project setup with all configuration files',
+        #     'actions': []
+        # }
+        #
+        # for file in files:
+        #     file_path = Path(f'./temps_files/{self.language}/{file}').read_text()
+        #     commit_data['actions'].append({
+        #         'action': 'create',
+        #         'file_path': file,
+        #         'content': file_path,
+        #         'author_email': self.user.email,
+        #         'author_name': self.user.username
+        #     })
+        #     logging.info(f'Added {file} for commit')
+        #
+        # # Создаем один коммит со всеми файлами
+        # project.commits.create(commit_data)
+        # logging.info('All files committed in a single commit')
 
         files = ("README.md", ".dockerignore", ".gitignore", ".gitlab-ci.yml", "Dockerfile", "docker-compose.yml")
         project = self.gl.projects.get(self.project_id, lazy=True)
@@ -87,15 +121,23 @@ class GitlabUtil:
         }
 
         for file in files:
-            file_path = Path(f'./temps_files/{self.language}/{file}').read_text()
-            commit_data['actions'].append({
-                'action': 'create',
-                'file_path': file,
-                'content': file_path,
-                'author_email': self.user.email,
-                'author_name': self.user.username
-            })
-            logging.info(f'Added {file} for commit')
+            try:
+                # Используем get_path для получения правильного пути
+                file_path = get_path(f'temps_files/{self.language}/{file}')
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                commit_data['actions'].append({
+                    'action': 'create',
+                    'file_path': file,
+                    'content': content,
+                    'author_email': self.user.email,
+                    'author_name': self.user.username
+                })
+                logging.info(f'Added {file} for commit')
+            except FileNotFoundError as e:
+                logging.error(f'File not found: {file_path}')
+                raise
 
         # Создаем один коммит со всеми файлами
         project.commits.create(commit_data)
