@@ -1,4 +1,4 @@
-# ! /usr/local/python/3.12.1/bin/python3
+####### ! /usr/local/python/3.12.1/bin/python3
 
 import gitlab
 import time
@@ -8,6 +8,8 @@ import sys
 import os
 import gitlab.exceptions
 from pathlib import Path
+from typing import Optional
+import typer
 
 
 logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",
@@ -20,14 +22,21 @@ logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",
 
 
 class GitlabUtil:
-    def __init__(self, name, language):
-        self.token = os.getenv("GITLAB_TOKEN") or getpass.getpass("🔑 Введите GitLab токен: ")
+    def __init__(self, name, language=None):
+        self.token = os.getenv("GITLAB_TOKEN")
+        if not self.token:
+            logging.info("GITLAB_TOKEN не найден. Введите токен вручную (осталось 3 попытки).")
+            self.token = getpass.getpass("🔑 Введите GITLAB ACCESS TOKEN: ")
+        # self.token = os.getenv("GITLAB_TOKEN") or getpass.getpass("🔑 Введите GitLab токен: ")
         self.name = name
         self.user = None
         self.project_id = None
         self.language = language
         self.gitlab_url = os.getenv('GITLAB_URL', 'https://gitlab.com')
-        for i in range(3):
+        
+
+    def auth(self):
+        for i in range(2):
             try:
                 self.gl = gitlab.Gitlab(private_token=self.token)
                 self.gl.auth()
@@ -35,9 +44,8 @@ class GitlabUtil:
                 logging.info(f"Пользователь: {self.user.username:}[{self.user.id}] успешно авторизовался!")
                 break
             except gitlab.exceptions.GitlabAuthenticationError as e:
-                logging.warning(f'Не найдена переменная GITLAB_TOKEN для авторизации')
-                if i < 3:
-                    logging.warning(f"У вас {3 - i} попытки")
+                if i < 2:
+                    logging.warning(f'Ошибка при авторизации {e}: У вас {2 - i} попытки')
                     self.token = getpass.getpass("🔑 Введите GitLab токен: ")
             except gitlab.exceptions.GitlabHttpError as e:
                 logging.error(f"HTTP статус: {e}")
@@ -48,6 +56,7 @@ class GitlabUtil:
         else:
             logging.error("Превышено максимальное количество попыток ввода токена.")
             exit(1)
+
 
     def create(self):
         try:
@@ -65,6 +74,7 @@ class GitlabUtil:
                 exit(1)
         except Exception as e:
             logging.error(f'[ERROR]: {e}')
+
 
     def add_base_files_for_project(self):
 
@@ -95,7 +105,7 @@ class GitlabUtil:
         #     )
         #     logging.info(f'file {file} has already been created.')
 
-        files = ( ".dockerignore", ".gitignore", ".gitlab-ci.yml", "Dockerfile", "docker-compose.yml")
+        files = ("README.md", ".dockerignore", ".gitignore", ".gitlab-ci.yml", "Dockerfile", "docker-compose.yml")
         project = self.gl.projects.get(self.project_id, lazy=True)
 
         # Собираем все файлы для одного коммита
@@ -120,6 +130,7 @@ class GitlabUtil:
         project.commits.create(commit_data)
         logging.info('All files committed in a single commit')
 
+
     def add_branches(self):
         project = self.gl.projects.get(self.project_id, lazy=False)
         try:
@@ -127,6 +138,7 @@ class GitlabUtil:
                                      'ref': 'main'})
         except Exception as e:
             logging.info(f'{e}')
+
 
     def protected_branches(self):
         project = self.gl.projects.get(self.project_id, lazy=False)
@@ -166,13 +178,66 @@ class GitlabUtil:
             logging.info(f"Project '{self.name}' Does Not Exist!")
 
 
-if __name__ == "__main__":
-    inst = GitlabUtil("Test", 'python')
+# if __name__ == "__main__":
+#     inst = GitlabUtil("Test", 'python')
+#     inst.auth()
+#     time.sleep(0.5)
+#     inst.create()
+#     inst.add_base_files_for_project()
+#     inst.add_branches()
+#     inst.protected_branches()
+#     time.sleep(1)
+#     # inst.delete()
+#     logging.info("Процесс завершен успешно")
+
+
+def create_project(name, lang: Optional[str]):
+    inst = GitlabUtil(name, lang)
+    inst.auth()
     time.sleep(0.5)
     inst.create()
     inst.add_base_files_for_project()
     inst.add_branches()
     inst.protected_branches()
     time.sleep(1)
-    # inst.delete()
     logging.info("Процесс завершен успешно")
+
+
+def delete_project(name: str):
+    inst = GitlabUtil(name)
+    inst.auth()
+    inst.delete()
+
+app = typer.Typer(add_completion=False)
+
+@app.command()
+def create(lang: str = typer.Option(..., "--lang", "-l", help="Language of the project.", show_default=False),
+           name: str = typer.Option(..., "--name", "-n", help="Name of the project.", show_default=False)):
+    
+    """
+    Команда для создания нового проекта.
+    
+    Аргументы:
+    name: Имя проекта
+    lang: Язык проекта
+    """
+
+    create_project(name, lang)
+
+
+
+@app.command()
+def delete(name: str = typer.Option(..., "--name", "-n", help="Name of the project.", show_default=False)):
+    
+    """
+    Команда для удаления проекта.
+    
+    Аргумент:
+    name: Имя проекта (--name, -n)
+    """
+    
+    delete_project(name)
+    
+
+if __name__ == "__main__":
+    app()
