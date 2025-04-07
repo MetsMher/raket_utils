@@ -1,5 +1,3 @@
-####### ! /usr/local/python/3.12.1/bin/python3
-
 import gitlab
 import time
 import getpass
@@ -27,8 +25,8 @@ class GitlabUtil:
         if not self.token:
             logging.info("GITLAB_TOKEN не найден. Введите токен вручную (осталось 3 попытки).")
             self.token = getpass.getpass("🔑 Введите GITLAB ACCESS TOKEN: ")
-        # self.token = os.getenv("GITLAB_TOKEN") or getpass.getpass("🔑 Введите GitLab токен: ")
         self.name = name
+        self.gl = None
         self.user = None
         self.project_id = None
         self.language = language
@@ -77,33 +75,6 @@ class GitlabUtil:
 
 
     def add_base_files_for_project(self):
-
-        # def file_generate(
-        #         file_path: str,
-        #         content,
-        #         author_email,
-        #         author_name
-        # ):
-        #     data = {
-        #         'file_path': file_path,
-        #         'branch': 'main',
-        #         'content': content,
-        #         'author_email': author_email,
-        #         'author_name': author_name
-        #     }
-        #     return data
-        # # Добавляет файлы по отдельно по одному commit
-        # files = ("README.md", ".dockerignore", ".gitignore", ".gitlab-ci.yml", "Dockerfile", "docker-compose.yml")
-        # project = self.gl.projects.get(self.project_id, lazy=True)
-        # for file in files:
-        #     file_path = Path(f'./temps_files/{self.language}/{file}').read_text()
-        #     project.files.create(
-        #         file_generate(file_path=file,
-        #                       content=file_path,
-        #                       author_name=self.user.username,
-        #                       author_email=self.user.email)
-        #     )
-        #     logging.info(f'file {file} has already been created.')
 
         files = ("README.md", ".dockerignore", ".gitignore", ".gitlab-ci.yml", "Dockerfile", "docker-compose.yml")
         project = self.gl.projects.get(self.project_id, lazy=True)
@@ -178,19 +149,6 @@ class GitlabUtil:
             logging.info(f"Project '{self.name}' Does Not Exist!")
 
 
-# if __name__ == "__main__":
-#     inst = GitlabUtil("Test", 'python')
-#     inst.auth()
-#     time.sleep(0.5)
-#     inst.create()
-#     inst.add_base_files_for_project()
-#     inst.add_branches()
-#     inst.protected_branches()
-#     time.sleep(1)
-#     # inst.delete()
-#     logging.info("Процесс завершен успешно")
-
-
 def create_project(name, lang: Optional[str]):
     inst = GitlabUtil(name, lang)
     inst.auth()
@@ -208,10 +166,13 @@ def delete_project(name: str):
     inst.auth()
     inst.delete()
 
+
 app = typer.Typer(add_completion=False)
 
+
 @app.command()
-def create(lang: str = typer.Option(..., "--lang", "-l", help="Language of the project.", show_default=False),
+def create(
+           lang: str = typer.Option(..., "--lang", "-l", help="Language of the project.", show_default=False),
            name: str = typer.Option(..., "--name", "-n", help="Name of the project.", show_default=False)):
     
     """
@@ -228,16 +189,16 @@ def create(lang: str = typer.Option(..., "--lang", "-l", help="Language of the p
 
 @app.command()
 def delete(name: str = typer.Option(..., "--name", "-n", help="Name of the project.", show_default=False)):
-    
+
     """
     Команда для удаления проекта.
-    
+
     Аргумент:
     name: Имя проекта (--name, -n)
     """
-    
+
     delete_project(name)
-    
+
 
 if __name__ == "__main__":
     app()
