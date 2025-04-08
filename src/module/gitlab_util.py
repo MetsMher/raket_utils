@@ -1,5 +1,6 @@
-import gitlab
-import gitlab.exceptions
+from gitlab import exceptions
+from gitlab import const
+from gitlab import Gitlab
 
 import getpass
 
@@ -30,24 +31,24 @@ class GitlabUtil:
         self.__project_id = None
         self.language = language
         self.gitlab_url = os.getenv('GITLAB_URL', 'https://gitlab.com')
-        
+
 
     def auth(self):
         for i in range(2):
             try:
-                self.gl = gitlab.Gitlab(private_token=self.token)
+                self.gl = Gitlab(private_token=self.token)
                 self.gl.auth()
                 self.user = self.gl.user
                 logger.info(f"Пользователь: {self.user.username:}[{self.user.id}] успешно авторизовался! :🤑:")
                 break
-            except gitlab.exceptions.GitlabAuthenticationError as e:
+            except exceptions.GitlabAuthenticationError as e:
                 if i < 2:
                     logger.warning(f'Ошибка при авторизации {e}: У вас {2 - i} попытки')
                     self.token = getpass.getpass("🔑 Введите GitLab токен: ")
-            except gitlab.exceptions.GitlabHttpError as e:
+            except exceptions.GitlabHttpError as e:
                 logger.error(f"HTTP статус: {e}")
                 exit(1)
-            except gitlab.exceptions.GitlabGetError as e:
+            except exceptions.GitlabGetError as e:
                 logger.error(f"Ошибка аутентификации HTTP статус: {e}")
                 exit(1)
         else:
@@ -154,22 +155,22 @@ class GitlabUtil:
         try:
             project.protectedbranches.create({
                     'name': branch_name,
-                    'push_access_level': gitlab.const.AccessLevel.NO_ACCESS,
-                    'merge_access_level': gitlab.const.AccessLevel.DEVELOPER,
+                    'push_access_level': const.AccessLevel.NO_ACCESS,
+                    'merge_access_level': const.AccessLevel.DEVELOPER,
                 })
             logger.info(f'Protected branch "{branch_name}" created.')
-        except gitlab.exceptions.GitlabCreateError as e:
+        except exceptions.GitlabCreateError as e:
             logger.warning(f'Failed to create protected branch: {e}')
 
         project.protectedbranches.create(
             {
                 'name': 'develop',
-                'push_access_level': gitlab.const.AccessLevel.DEVELOPER,  # Push разрешён для разработчиков
-                'merge_access_level': gitlab.const.AccessLevel.DEVELOPER,  # Merge разрешён для разработчиков
-                'unprotect_access_level': gitlab.const.AccessLevel.MAINTAINER,  # Снять защиту могут только мейнтейнеры
+                'push_access_level': const.AccessLevel.DEVELOPER,  # Push разрешён для разработчиков
+                'merge_access_level': const.AccessLevel.DEVELOPER,  # Merge разрешён для разработчиков
+                'unprotect_access_level': const.AccessLevel.MAINTAINER,  # Снять защиту могут только мейнтейнеры
                 'code_owner_approval_required': False,  # Требовать approval от CODEOWNERS (опционально)
-                'allowed_to_push': [{'access_level': gitlab.const.AccessLevel.DEVELOPER}],
-                'allowed_to_merge': [{'access_level': gitlab.const.AccessLevel.DEVELOPER}],
+                'allowed_to_push': [{'access_level': const.AccessLevel.DEVELOPER}],
+                'allowed_to_merge': [{'access_level': const.AccessLevel.DEVELOPER}],
         })
         logger.info(f'Protected branch "develop" created:')
 
