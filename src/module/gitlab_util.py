@@ -1,6 +1,5 @@
-import gitlab.const
+import gitlab
 import gitlab.exceptions
-
 
 import getpass
 
