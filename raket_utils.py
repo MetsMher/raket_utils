@@ -8,6 +8,7 @@ from typing import Optional
 import typer
 import os
 import sys
+from rich.logging import RichHandler
 
 def get_path(relative_path):
     """Получает абсолютный путь к файлу, учитывая временную папку PyInstaller."""
@@ -18,20 +19,26 @@ def get_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
-logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",
-                    datefmt="%Y-%m-%d %H:%M:%S",
-                    # filename="gitlab_log.log",
-                    # filemode="a",
-                    stream=sys.stdout,
-                    level=logging.INFO,
-                    )
+# Настройка логгера
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# Обработчик для вывода в консоль с использованием rich
+console_handler = RichHandler(markup=True)
+console_handler.setFormatter(logging.Formatter("%(message)s"))
+logger.addHandler(console_handler)
+
+# Обработчик для записи в файл без rich
+file_handler = logging.FileHandler(filename='log.txt', mode='w')
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(file_handler)
 
 
 class GitlabUtil:
     def __init__(self, name, language=None):
         self.token = os.getenv("GITLAB_TOKEN")
         if not self.token:
-            logging.info("GITLAB_TOKEN не найден. Введите токен вручную (осталось 3 попытки).")
+            logger.info("GITLAB_TOKEN не найден. Введите токен вручную (осталось 3 попытки).")
             self.token = getpass.getpass("🔑 Введите GITLAB ACCESS TOKEN: ")
         self.name = name
         self.gl = None
@@ -47,20 +54,20 @@ class GitlabUtil:
                 self.gl = gitlab.Gitlab(private_token=self.token)
                 self.gl.auth()
                 self.user = self.gl.user
-                logging.info(f"Пользователь: {self.user.username:}[{self.user.id}] успешно авторизовался!")
+                logger.info(f"Пользователь: {self.user.username:}[{self.user.id}] успешно авторизовался! :🤑:")
                 break
             except gitlab.exceptions.GitlabAuthenticationError as e:
                 if i < 2:
-                    logging.warning(f'Ошибка при авторизации {e}: У вас {2 - i} попытки')
+                    logger.warning(f'Ошибка при авторизации {e}: У вас {2 - i} попытки')
                     self.token = getpass.getpass("🔑 Введите GitLab токен: ")
             except gitlab.exceptions.GitlabHttpError as e:
-                logging.error(f"HTTP статус: {e}")
+                logger.error(f"HTTP статус: {e}")
                 exit(1)
             except gitlab.exceptions.GitlabGetError as e:
-                logging.error(f"Ошибка аутентификации HTTP статус: {e}")
+                logger.error(f"Ошибка аутентификации HTTP статус: {e}")
                 exit(1)
         else:
-            logging.error("Превышено максимальное количество попыток ввода токена.")
+            logger.error("Превышено максимальное количество попыток ввода токена.")
             exit(1)
 
 
@@ -73,13 +80,13 @@ class GitlabUtil:
                     'visibility': 'private'
                 })
                 self.project_id = project.get_id()  # Stanum enq project ID u pahum enq self project_id- um
-                logging.info(f'User: {self.user.username} create Project "{self.name}"')
+                logger.info(f'User: {self.user.username} create Project "{self.name}"')
                 return
             else:
-                logging.info(f'Project "{self.name}" has already been created.')
+                logger.info(f'Project "{self.name}" has already been created.')
                 sys.exit()
         except Exception as e:
-            logging.error(f'[ERROR]: {e}')
+            logger.error(f'[ERROR]: {e}')
 
 
     def add_base_files_for_project(self):
@@ -134,14 +141,14 @@ class GitlabUtil:
                     'author_email': self.user.email,
                     'author_name': self.user.username
                 })
-                logging.info(f'Added {file} for commit')
+                logger.info(f'Added {file} for commit')
             except FileNotFoundError as e:
-                logging.error(f'File not found: {file_path}')
+                logger.error(f'File not found: {file_path}')
                 raise
 
         # Создаем один коммит со всеми файлами
         project.commits.create(commit_data)
-        logging.info('All files committed in a single commit')
+        logger.info('All files committed in a single commit')
 
 
     def add_branches(self):
@@ -150,7 +157,7 @@ class GitlabUtil:
             project.branches.create({'branch': 'develop',
                                      'ref': 'main'})
         except Exception as e:
-            logging.info(f'{e}')
+            logger.info(f'{e}')
 
 
     def protected_branches(self):
@@ -165,9 +172,9 @@ class GitlabUtil:
                     'push_access_level': gitlab.const.AccessLevel.NO_ACCESS,
                     'merge_access_level': gitlab.const.AccessLevel.DEVELOPER,
                 })
-            logging.info(f'Protected branch "{branch_name}" created.')
+            logger.info(f'Protected branch "{branch_name}" created.')
         except gitlab.exceptions.GitlabCreateError as e:
-            logging.warning(f'Failed to create protected branch: {e}')
+            logger.warning(f'Failed to create protected branch: {e}')
 
         project.protectedbranches.create(
             {
@@ -179,16 +186,16 @@ class GitlabUtil:
                 'allowed_to_push': [{'access_level': gitlab.const.AccessLevel.DEVELOPER}],
                 'allowed_to_merge': [{'access_level': gitlab.const.AccessLevel.DEVELOPER}],
         })
-        logging.info(f'Protected branch "develop" created:')
+        logger.info(f'Protected branch "develop" created:')
 
 
     def delete(self):
         projects_name = self.gl.projects.list(search=self.name, owned=True)
         if projects_name:
             self.gl.projects.delete(projects_name[0].id)
-            logging.info(f'User: {self.user.username} Deleted "{self.name}" Project')
+            logger.info(f'User: {self.user.username} Deleted "{self.name}" Project')
         else:
-            logging.info(f"Project '{self.name}' Does Not Exist!")
+            logger.info(f"Project '{self.name}' Does Not Exist!")
 
 
 def create_project(name, lang: Optional[str]):
@@ -200,7 +207,7 @@ def create_project(name, lang: Optional[str]):
     inst.add_branches()
     inst.protected_branches()
     time.sleep(1)
-    logging.info("Процесс завершен успешно")
+    logger.info("Процесс завершен успешно")
 
 
 def delete_project(name: str):
@@ -224,7 +231,6 @@ def create(
     name: Имя проекта
     lang: Язык проекта
     """
-
     create_project(name, lang)
 
 
