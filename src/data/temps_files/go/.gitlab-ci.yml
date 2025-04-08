@@ -1,0 +1,9 @@
+stages:
+  - test
+
+test-utils:
+  image: alpine
+  stage: test
+  script:
+    - >
+      echo "This is good utils!:)"
