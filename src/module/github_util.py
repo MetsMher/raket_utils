@@ -1,30 +1,37 @@
-from github import Github
-from github import Auth
-from github.GithubException import BadCredentialsException
+from github import Github, Auth
 
 from os import getenv
-import getpass
+
+from getpass import getpass
 
 
-token = getenv("GITHUB_TOKEN")
+class GitHubUtil:
+    def __init__(self, repo_name, language=None):
+        self.token = getenv("GITHUB_TOKEN")
+        if not self.token:
+            print("GITHUB_TOKEN не найден. Введите токен вручную (осталось 3 попытки).")
+            self.token = getpass("🔑 Введите GITHUB ACCESS TOKEN: ")
+        self.repo_name = repo_name
+        self.language = language
+        self.user = None
 
-if not token:
-    print("Введите токен:")
-    token = getpass.getpass()
-else:
-    print("Токен найден.")
+    def auth(self):
+        auth = Auth.Token(self.token)
+        g = Github(auth=auth)
+        self.user = g.get_user()
 
-try:
+    def create_repo(self):
+        repo = self.user.create_repo(
+            name=self.repo_name,
+            description="Test create repo in class GitHubUtil",
+            private=False,
+            gitignore_template="Go",
+            auto_init=True
+        )
+        print(f"This is your create repo link {repo.html_url}, good luck!!! [:)]")
 
-    auth = Auth.Token(token)
-    
 
-    g = Github(auth=auth)
-    repo = g.get_repo("MetsMher/raket_utils") 
-
-    print(f"This is repo: {repo.html_url}")
-    
-except BadCredentialsException as e:
-    print(f"Неверный токен! Ошибка: {e}")
-except Exception as e:
-    print(f"Произошла неожиданная ошибка: {e}")
+if __name__ == "__main__":
+    init = GitHubUtil("Aparan")
+    init.auth()
+    init.create_repo()
