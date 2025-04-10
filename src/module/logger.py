@@ -12,6 +12,6 @@ console_handler.setFormatter(logging.Formatter("%(message)s"))
 logger.addHandler(console_handler)
 
 # Обработчик для записи в файл без rich
-file_handler = logging.FileHandler(filename='log.txt', mode='w')
+file_handler = logging.FileHandler(filename='log.txt', mode='a', encoding="utf-8")
 file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger.addHandler(file_handler)

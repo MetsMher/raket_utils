@@ -16,7 +16,7 @@ def get_path(relative_path):
     if hasattr(sys, '_MEIPASS'):  # Если запущено из собранного бинарника
         base_path = sys._MEIPASS
     else:  # Если запущено из исходного кода
-        base_path = os.path.abspath("../..")
+        base_path = os.path.abspath("./src/")
     return os.path.join(base_path, relative_path)
 
 class GitlabUtil:
@@ -34,12 +34,13 @@ class GitlabUtil:
 
 
     def auth(self):
-        for i in range(2):
+        for i in range(3):
+            print(i)
             try:
                 self.gl = Gitlab(private_token=self.token)
                 self.gl.auth()
                 self.user = self.gl.user
-                logger.info(f"Пользователь: {self.user.username:}[{self.user.id}] успешно авторизовался! :🤑:")
+                logger.info(f"Пользователь: {self.user.username:}[{self.user.id}] успешно авторизовался! 🤑")
                 break
             except exceptions.GitlabAuthenticationError as e:
                 if i < 2:
