@@ -4,6 +4,7 @@ from os import getenv
 
 from getpass import getpass
 
+from logger import logger
 
 class GitHubUtil:
     def __init__(self, repo_name, language=None):
@@ -24,14 +25,14 @@ class GitHubUtil:
                 auth = Auth.Token(self.token)
                 g = Github(auth=auth)
                 self.user = g.get_user()
-                print(f'UserName: {self.user.login}')
+                logger.info(f'Пользователь: {self.user.login}:{self.user.id} успешно авторизовался! 🤑"')
                 break
             except GithubException as e:
-                print(f'HTTP status {e.status}: У вас осталось {max_attempts - attempt - 1} попыток.')
+                logger.error(f'HTTP status {e.status}: У вас осталось {max_attempts - attempt - 1} попыток.')
                 if attempt + 1 < max_attempts:
                     self.token = getpass("🔑 Введите GITHUB ACCESS TOKEN: ")
         else:
-            print("Превышено максимальное количество попыток ввода токена.")
+            logger.error("Превышено максимальное количество попыток ввода токена.")
             exit(1)
 
     def create_repo(self):
@@ -42,12 +43,12 @@ class GitHubUtil:
             gitignore_template="Go",
             auto_init=True
         )
-        print(f"This is your create repo link {repo.html_url}, {repo.full_name}  good luck!!! [:)]")
+        logger.info(f"This is your create repo link {repo.html_url}, {repo.full_name}  good luck!!! [:)]")
 
     def delete_repo(self):
         repo = self.user.get_repo(self.repo_name)
         repo.delete()
-        print(f"delete {self.repo_name}")
+        logger.error(f"delete {self.repo_name}")
 
     def repo_list(self):
         repos = self.user.get_repos()
