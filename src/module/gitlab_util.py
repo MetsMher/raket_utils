@@ -73,6 +73,8 @@ class GitlabUtil:
                 sys.exit()
         except Exception as e:
             logger.error(f'[ERROR]: {e}')
+            self.delete()
+            print("ROLLBACK")
 
 
     def add_base_files_for_project(self):
@@ -131,6 +133,8 @@ class GitlabUtil:
                 logger.info(f'Added {file} for commit')
             except FileNotFoundError as e:
                 logger.error(f'File not found: {e}')
+                self.delete()
+                print("ROLLBACK")
                 raise
 
         # Создаем один коммит со всеми файлами
@@ -145,6 +149,8 @@ class GitlabUtil:
                                      'ref': 'main'})
         except Exception as e:
             logger.info(f'{e}')
+            self.delete()
+            print("ROLLBACK")
 
 
     def protected_branches(self):
@@ -161,20 +167,26 @@ class GitlabUtil:
                 })
             logger.info(f'Protected branch "{branch_name}" created.')
         except exceptions.GitlabCreateError as e:
-            logger.warning(f'Failed to create protected branch: {e}')
+            logger.error(f'Failed to create protected branch: {e}')
+            self.delete()
+            print("ROLLBACK")
 
-        project.protectedbranches.create(
-            {
-                'name': 'develop',
-                'push_access_level': const.AccessLevel.DEVELOPER,  # Push разрешён для разработчиков
-                'merge_access_level': const.AccessLevel.DEVELOPER,  # Merge разрешён для разработчиков
-                'unprotect_access_level': const.AccessLevel.MAINTAINER,  # Снять защиту могут только мейнтейнеры
-                'code_owner_approval_required': False,  # Требовать approval от CODEOWNERS (опционально)
-                'allowed_to_push': [{'access_level': const.AccessLevel.DEVELOPER}],
-                'allowed_to_merge': [{'access_level': const.AccessLevel.DEVELOPER}],
-        })
-        logger.info(f'Protected branch "develop" created:')
-
+        try:
+            project.protectedbranches.create(
+                {
+                    'name': 'develop',
+                    'push_access_level': const.AccessLevel.DEVELOPER,  # Push разрешён для разработчиков
+                    'merge_access_level': const.AccessLevel.DEVELOPER,  # Merge разрешён для разработчиков
+                    'unprotect_access_level': const.AccessLevel.MAINTAINER,  # Снять защиту могут только мейнтейнеры
+                    'code_owner_approval_required': False,  # Требовать approval от CODEOWNERS (опционально)
+                    'allowed_to_push': [{'access_level': const.AccessLevel.DEVELOPER}],
+                    'allowed_to_merge': [{'access_level': const.AccessLevel.DEVELOPER}],
+            })
+            logger.info(f'Protected branch "develop" created:')
+        except Exception as e:
+            logger.error(f'{e}')
+            self.delete()
+            print("ROLLBACK")
 
     def delete(self):
         projects_name = self.gl.projects.list(search=self.name, owned=True)
@@ -183,3 +195,13 @@ class GitlabUtil:
             logger.info(f'User: {self.user.username} Deleted "{self.name}" Project')
         else:
             logger.info(f"Project '{self.name}' Does Not Exist!")
+
+
+if __name__ == "__main__":
+    inst = GitlabUtil(name="Taron-lav-txa", language="Python")
+    inst.auth()
+    inst.create()
+    inst.add_base_files_for_project()
+    inst.add_branches()
+    inst.protected_branches()
+    logger.info("Процесс завершен успешно")
