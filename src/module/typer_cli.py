@@ -8,19 +8,24 @@ from logger import logger
 
 
 def create_project(name, lang: Optional[str]):
-    inst = GitlabUtil(name, lang)
-    inst.auth()
-    inst.create()
-    inst.add_base_files_for_project()
-    inst.add_branches()
-    inst.protected_branches()
-    logger.info("Процесс завершен успешно")
+    try:
+        util = GitlabUtil(name, lang)
+        util.auth()
+        util.create_project()
+        with util.managed_project():
+            util.add_base_files_for_project()
+            util.add_branches_project()
+            util.protected_branches_project()
+        logger.info("✅ Всё успешно завершено! Проект создан.")
+    except Exception as e:
+        logger.error(f"❌ Ошибка в процессе: {e}")
 
 
 def delete_project(name: str):
-    inst = GitlabUtil(name)
-    inst.auth()
-    inst.delete()
+    util = GitlabUtil(name)
+    util.auth()
+    with util.managed_project():
+        util.delete_project()
 
 
 app = typer.Typer(add_completion=False)
@@ -40,7 +45,11 @@ def create(
     create_project(name, lang)
 
 @app.command()
-def delete(name: str = typer.Option(..., "--name", "-n", help="Name of the project.", show_default=False)):
+def delete(name: str = typer.Option(...,
+                                    "--name", "-n",
+                                    help="Name of the project.",
+                                    show_default=False)
+                                    ):
     """
     Команда для удаления проекта.
 
