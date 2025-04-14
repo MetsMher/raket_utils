@@ -18,7 +18,9 @@ def create_project(name, lang: Optional[str]):
             util.protected_branches_project()
         logger.info("✅ Всё успешно завершено! Проект создан.")
     except Exception as e:
-        logger.error(f"❌ Ошибка в процессе: {e}")
+        exit(1)
+        # raise
+        # logger.error(f"❌ Ошибка в процессе: {e}")
 
 
 def delete_project(name: str):
@@ -44,12 +46,13 @@ def create(
     """
     create_project(name, lang)
 
+
 @app.command()
 def delete(name: str = typer.Option(...,
                                     "--name", "-n",
                                     help="Name of the project.",
                                     show_default=False)
-                                    ):
+           ):
     """
     Команда для удаления проекта.
 

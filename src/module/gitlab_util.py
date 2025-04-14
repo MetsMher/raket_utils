@@ -201,6 +201,8 @@
 
 
 from contextlib import contextmanager
+from re import search
+
 from gitlab import exceptions, const, Gitlab
 import getpass
 import os
@@ -246,7 +248,7 @@ class GitlabUtil:
         try:
             yield self
         except Exception as e:
-            logger.error(f"Ошибка: {e}\nВыполняем rollback...")
+            logger.error(f"Ошибка: {e} Выполняем rollback...")
             for action in reversed(self.rollback_actions):
                 try:
                     action()
@@ -256,21 +258,25 @@ class GitlabUtil:
 
     def create_project(self):
         try:
-            projects = self.gl.projects.list(search=self.name, owned=True)
-            if not projects:
+            try:
+                self.gl.projects.get(f'{self.user.username}/{self.name}')
+                logger.error(f'Проект "{self.name}" уже существует.')
+                # exit(1)
+                raise
+            except:
                 project = self.gl.projects.create({
                     'name': self.name,
                     'visibility': 'private'
                 })
                 self.__project_id = project.id
                 self.project_created = True
-                self.rollback_actions.append(lambda: self.delete_project(silent=True))
                 logger.info(f'Проект "{self.name}" успешно создан.')
-            else:
-                raise RuntimeError(f'Проект "{self.name}" уже существует.')
+            # else:
+                # raise RuntimeError(f'Проект "{self.name}" уже существует.')
         except Exception as e:
-            logger.error(f'Ошибка при создании проекта: {e}')
+            # logger.error(f'Ошибка при создании проекта:')
             raise
+
 
     def add_base_files_for_project(self):
         files = ("README.md", ".dockerignore", ".gitignore", ".gitlab-ci.yml", "Dockerfile", "docker-compose.yml")
@@ -280,7 +286,7 @@ class GitlabUtil:
             'commit_message': 'Initial project setup with all configuration files',
             'actions': []
         }
-
+        self.rollback_actions.append(lambda: self.delete_project(silent=True))
         for file in files:
             try:
                 content = Path(f'./src/data/temps_files/{self.language}/{file}').read_text(encoding='utf-8')
@@ -301,6 +307,7 @@ class GitlabUtil:
 
     def add_branches_project(self):
         project = self.gl.projects.get(self.__project_id)
+        self.rollback_actions.append(lambda: self.delete_project(silent=True))
         try:
             project.branches.create({'branch': 'develop', 'ref': 'main'})
             logger.info('Ветка "develop" успешно создана.')
@@ -309,6 +316,7 @@ class GitlabUtil:
             raise
 
     def protected_branches_project(self):
+        self.rollback_actions.append(lambda: self.delete_project(silent=True))
         project = self.gl.projects.get(self.__project_id)
         try:
             protect_branch = project.protectedbranches.get('main')
@@ -342,9 +350,9 @@ class GitlabUtil:
 
     def delete_project(self, silent=False):
         try:
-            projects_name = self.gl.projects.list(search=self.name, owned=True)
-            if projects_name or self.project_created:
-                self.gl.projects.delete(projects_name[0].id)
+            project = self.gl.projects.get(f'{self.user.username}/{self.name}')
+            if project or self.project_created:
+                self.gl.projects.delete(project.id)
                 logger.info(f'Проект "{self.name}" удалён.')
             elif not silent:
                 logger.info(f'Проект "{self.name}" не был создан, удалять нечего.')
@@ -353,14 +361,17 @@ class GitlabUtil:
                 logger.error(f'Ошибка при удалении проекта: {e}')
 
 if __name__ == "__main__":
-    try:
         util = GitlabUtil(name="testasdsadsadsaadsadp", language="Pytho")
         util.auth()
-        util.create_project()
-        with util.managed_project():
-            util.add_base_files_for_project()
-            util.add_branches_project()
-            util.protected_branches_project()
-        logger.info("✅ Всё успешно завершено! Проект создан.")
-    except Exception as e:
-        logger.error(f"❌ Ошибка в процессе: {e}")
+        util.delete_project()
+    # try:
+    #     util = GitlabUtil(name="testasdsadsadsaadsadp", language="Pytho")
+    #     util.auth()
+    #     util.create_project()
+    #     with util.managed_project():
+    #         util.add_base_files_for_project()
+    #         util.add_branches_project()
+    #         util.protected_branches_project()
+    #     logger.info("✅ Всё успешно завершено! Проект создан.")
+    # except Exception as e:
+    #     logger.error(f"❌ Ошибка в процессе: {e}")
