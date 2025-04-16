@@ -32,6 +32,15 @@ def delete_project(name: str):
 
 app = typer.Typer(add_completion=False)
 
+@app.command()
+def create_org(name: str = typer.Option(..., "--name", "-n", help="Name of the group.", show_default=False)):
+        """
+    Команда для создания группы.
+
+    Аргументы:
+    name: Имя группы
+        """
+    
 
 @app.command()
 def create(

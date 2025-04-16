@@ -90,7 +90,7 @@ class GitlabUtil:
 
 
     def add_base_files_for_project(self):
-        files = ("README.md", ".dockerignore", ".gitignore", ".gitlab-ci.yml", "Dockerfile", "docker-compose.yml")
+        files = ("README.md", "gitflow-branch-rules.md", ".dockerignore", ".gitignore", ".gitlab-ci.yml", "Dockerfile", "docker-compose.yml")
         project = self.gl.projects.get(self.__project_id, lazy=True)
         commit_data = {
             'branch': 'main',
@@ -147,7 +147,7 @@ class GitlabUtil:
         except Exception as e:
             logger.error(f'Ошибка защиты ветки main: {e}')
             raise
-
+ 
         try:
             project.protectedbranches.create({
                 'name': 'develop',
