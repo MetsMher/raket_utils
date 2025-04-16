@@ -74,7 +74,7 @@ class GitlabUtil:
                     'with_merge_requests_enabled': True,
                     'only_allow_merge_if_pipeline_succeeds': True,
                     'remove_source_branch_after_merge': False,
-                    # 'default_branch': 'develop',
+                    'default_branch': 'master',
                     'wiki_enabled': True,
                     'description': f'Created project for {self.language} language',
                     'container_registry_enabled': True
@@ -121,8 +121,10 @@ class GitlabUtil:
         project = self.gl.projects.get(self.__project_id)
         self.rollback_actions.append(lambda: self.delete_project(silent=True))
         try:
-            project.branches.create({'branch': 'develop', 'ref': 'main'})
-            logger.info('Ветка "develop" успешно создана.')
+            project.branches.create({'branch': 'develop', 'ref': 'main'}) # Создаем ветку develop
+            project.default_branch = 'develop' # Назначаем основной веткой develop
+            project.save()
+            logger.info('Ветка "develop" успешно создана и назаначен основной.')
         except Exception as e:
             logger.error(f'Ошибка при создании ветки "develop": {e}')
             raise
@@ -131,34 +133,59 @@ class GitlabUtil:
     def protected_branches_project(self):
         self.rollback_actions.append(lambda: self.delete_project(silent=True))
         project = self.gl.projects.get(self.__project_id)
+
         try:
             protect_branch = project.protectedbranches.get('main')
             protect_branch.delete()
-        except Exception:
-            pass  # Если защита не стоит — окей
+        except Exception as e:
+            print(f"PROTECTED DELETE {e}")
+            pass 
 
+        protected_rules = [
+                {   
+                    'name': 'main',
+                    'push_access_level': const.AccessLevel.NO_ACCESS,
+                    'merge_access_level': const.AccessLevel.DEVELOPER,
+                    'unprotect_access_level': const.AccessLevel.MAINTAINER,
+                    'code_owner_approval_required': False,
+                }, 
+                {    
+                    'name': 'develop',
+                    'push_access_level': const.AccessLevel.NO_ACCESS,
+                    'merge_access_level': const.AccessLevel.DEVELOPER,
+                    'unprotect_access_level': const.AccessLevel.MAINTAINER,
+                    'code_owner_approval_required': False,
+                }, 
+                {
+                    'name': 'release/*',
+                    'push_access_level': const.AccessLevel.NO_ACCESS,
+                    'merge_access_level': const.AccessLevel.DEVELOPER,
+                    'unprotect_access_level': const.AccessLevel.MAINTAINER,
+                    'code_owner_approval_required': False,
+                }, 
+                {    
+                    'name': 'hotfix/*',
+                    'push_access_level': const.AccessLevel.NO_ACCESS,
+                    'merge_access_level': const.AccessLevel.DEVELOPER,
+                    'unprotect_access_level': const.AccessLevel.MAINTAINER,
+                    'code_owner_approval_required': False,
+                },
+                {    
+                    'name': 'bugfix/*',
+                    'push_access_level': const.AccessLevel.NO_ACCESS,
+                    'merge_access_level': const.AccessLevel.DEVELOPER,
+                    'unprotect_access_level': const.AccessLevel.MAINTAINER,
+                    'code_owner_approval_required': False,
+                }]
+        
         try:
-            project.protectedbranches.create({
-                'name': 'main',
-                'push_access_level': const.AccessLevel.NO_ACCESS,
-                'merge_access_level': const.AccessLevel.DEVELOPER,
-            })
-            logger.info('Ветка "main" защищена.')
-        except Exception as e:
-            logger.error(f'Ошибка защиты ветки main: {e}')
-            raise
- 
-        try:
-            project.protectedbranches.create({
-                'name': 'develop',
-                'push_access_level': const.AccessLevel.DEVELOPER,
-                'merge_access_level': const.AccessLevel.DEVELOPER,
-                'unprotect_access_level': const.AccessLevel.MAINTAINER,
-                'code_owner_approval_required': False,
-            })
-            logger.info('Ветка "develop" защищена.')
-        except Exception as e:
-            logger.error(f'Ошибка защиты ветки develop: {e}')
+            for rule in protected_rules:
+                name = rule['name']
+                project.protectedbranches.create(rule)
+                logger.info(f'Создана защита для ветки {name}')
+            logger.info(f'Link for project: {project.web_url}')
+        except:
+            # print("ERROR_PROTECTED")
             raise
 
 
@@ -173,11 +200,12 @@ class GitlabUtil:
         except Exception as e:
             if not silent:
                 logger.error(f'Ошибка при удалении проекта: {e}')
+        
 
 
 if __name__ == "__main__":
     try:
-        util = GitlabUtil(name="testasdsadsadsaadsadp", language="Pytho")
+        util = GitlabUtil(name="test", language="Pytho")
         util.auth()
         util.create_project()
         with util.managed_project():
