@@ -13,9 +13,10 @@ def create_project(name, lang: Optional[str]):
         util.auth()
         util.create_project()
         with util.managed_project():
-            util.add_base_files_for_project()
-            util.add_branches_project()
             util.protected_branches_project()
+            util.add_base_files_for_project()
+            util.add_branches_project()     
+            util.get_project_info()
         logger.info("✅ Всё успешно завершено! Проект создан.")
     except Exception as e:
         exit(1)
