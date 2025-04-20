@@ -225,11 +225,11 @@ class GitlabUtil:
                 self.gl.projects.delete(project.id)
                 logger.info(f'Проект "{self.name}" удалён.')
             elif not silent:
-                logger.info(f'Проект "{self.name}" не был создан, удалять нечего.')
+                logger.error(f'Проект "{self.name}" не был создан, удалять нечего.')
         except Exception as e:
             if not silent:
-                logger.error(f'Ошибка при удалении проекта: {e}')
-        
+                logger.error(f'Проект "{self.name}" не был создан, удалять нечего. {e}')
+
 
 
 if __name__ == "__main__":
