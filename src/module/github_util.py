@@ -45,7 +45,7 @@ class GitHubUtil:
         try:
             yield self
         except Exception as e:
-            logger.error(f"Ошибка: {e} Выполняем rollback...")
+            logger.error(f"Ошибка: {e}\n Выполняем rollback...")
             for action in reversed(self.rollback_actions):
                 try:
                     action()
@@ -62,40 +62,46 @@ class GitHubUtil:
             exit(1)  # Просто выходим, не вызывая исключение
         except Exception as get_repo_error:
             # Если репозитория нет (get_repo вызвал исключение), пробуем создать
-            try:
+            # try:
                 repo = self.user.create_repo(
                     name=self.repo_name,
                     description="Test create repo in class GitHubUtil",
-                    private=False,
+                    private=True,
                     gitignore_template="Go",
-                    auto_init=True
+                    auto_init=True,
+                    # has_issues=True,
+                    # has_wiki=True,
+                    # has_downloads=True,
+                    # has_projects=True,
+                    # allow_squash_merge=True,
+                    # allow_merge_commit=True,
+                    # allow_rebase_merge=True,
+                    # default_branch = "develop"
                 )
                 self.project_created = True
                 logger.info(f'This is your create repo link {repo.html_url}')
-            except Exception as create_repo_error:
-                logger.error(f'Ошибка при создании репозитория: {create_repo_error}')
-                raise  # Пробрасываем исключение только если не смогли создать
+        except Exception as create_repo_error:
+            # Если не удалось создать репозиторий, логируем ошибку
+            # и пробрасываем исключение, чтобы вызвать rollback
+            logger.error(f'Ошибка при создании репозитория: {create_repo_error}')
+            raise  # Пробрасываем исключение только если не смогли создать
 
 
-    # def create_repo(self):
-    #     try:
-    #         try:
-    #             self.user.get_repo(self.repo_name)
-    #             logger.error(f'Проект "{self.repo_name}" уже существует.')
-    #
-    #             return
-    #         except:
-    #             repo = self.user.create_repo(
-    #                 name=self.repo_name,
-    #                 description="Test create repo in class GitHubUtil",
-    #                 private=False,
-    #                 gitignore_template="Go",
-    #                 auto_init=True
-    #             )
-    #             self.project_created = True
-    #             logger.info(f'This is your create repo link {repo.html_url}')
-    #     except Exception as e:
-    #         logger.error(f'{e}')
+    def create_branches(self):
+        self.rollback_actions.append(lambda: self.delete_repo(silent=True))
+        try:
+            repo = self.user.get_repo(self.repo_name)
+            # if not repo:
+            #     logger.error(f'Проект "{self.repo_name}" не был создан, ветки создавать нечего.')
+            #     return
+            # Создаем ветку test
+            repo.create_git_ref(ref="refs/heads/develop", sha=repo.get_branch("main").commit.sha)
+
+
+            # logger.info(f'Ветки develop успешно созданы в проекте {self.repo_name}')
+        except Exception as e:
+            # logger.error(f'Ошибка при создании веток: {e}')
+            raise
 
 
 
@@ -105,25 +111,14 @@ class GitHubUtil:
             if repo:
                 repo.delete()
                 logger.error(f"Проект {self.repo_name} удален")
-        except Exception:
-            if not silent:
+            elif not silent:
                 logger.error(f'Проект "{self.repo_name}" не был создан, удалять нечего.')
-            # logger.info(f'ERROR {e}')
-            # if not silent:
-            #     logger.error(f'Ошибка при удалении проекта: {e}')
+        except Exception as e:
+            if not silent:
+                logger.error(f'Ошибка при удалении проекта: {e}')
 
 
     def repo_list(self):
         repos = self.user.get_repos()
         for repo in repos:
             print(f'Repository: {repo.full_name} - Language: {repo.language}')
-
-# self.rollback_actions.append(lambda: self.delete_project(silent=True))
-
-
-if __name__ == "__main__":
-    init = GitHubUtil("Mher")
-    init.auth()
-    init.create_repo()
-    # init.repo_list()
-    # init.delete_repo()

@@ -229,18 +229,3 @@ class GitlabUtil:
         except Exception as e:
             if not silent:
                 logger.error(f'Проект "{self.name}" не был создан, удалять нечего. {e}')
-
-
-
-if __name__ == "__main__":
-    try:
-        util = GitlabUtil(name="test", language="Pytho")
-        util.auth()
-        util.create_project()
-        with util.managed_project():
-            util.add_base_files_for_project()
-            util.add_branches_project()
-            util.protected_branches_project()
-        logger.info("✅ Всё успешно завершено! Проект создан.")
-    except Exception as e:
-        logger.error(f"❌ Ошибка в процессе: {e}")
