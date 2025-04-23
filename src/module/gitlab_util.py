@@ -6,7 +6,6 @@ import getpass
 
 import os
 
-
 from logger import logger
 
 from pathlib import Path
