@@ -71,7 +71,7 @@ class GitHubUtil:
                     description="Test create repo in class GitHubUtil",
                     private=False,
                     # gitignore_template="Go",
-                    # auto_init=True,
+                    auto_init=True,
                     has_issues=True,
                     has_wiki=True,
                     has_downloads=True,
@@ -107,19 +107,6 @@ class GitHubUtil:
         except Exception as e:
             # logger.error(f'Ошибка при создании веток: {e}')
             raise
-
-    
-    # def add_base_files_for_project(self):
-    #     repo = self.user.get_repo(self.repo_name)
-    #     files = ("README.md", "gitflow-branch-rules.md", ".dockerignore", ".gitignore", ".gitlab-ci.yml", "Dockerfile", "docker-compose.yml")
-    #     self.rollback_actions.append(lambda: self.delete_repo(silent=True))
-    #     try:
-    #         for file in files:
-    #             content = Path(f'./src/data/temps_files/{self.language}/{file}').read_text(encoding='utf-8')
-    #             repo.create_file(file, f"Добавлен файл {file}", content, branch="main")
-    #     except Exception as e:
-    #         logger.error(f'Ошибка при добавлении файла: {e}')
-    #         raise
 
 
     def add_base_files_for_project(self):
@@ -157,6 +144,10 @@ class GitHubUtil:
         except Exception as e:
             logger.error(f'Ошибка при добавлении файлов: {e}')
             raise
+
+    def branch_protected(self):
+        repo = self.user.get_repo(self.repo_name)
+        protecte = repo
 
 
     def delete_repo(self, silent=False):
